@@ -3,12 +3,15 @@ package org.eigengo.akkaextras.javamail
 import scalaz.Id._
 import org.specs2.mutable.Specification
 import javax.mail.internet.{InternetAddress, MimeMultipart}
+import javax.mail.Session
+import java.util.Properties
 
 trait AttachmentMimeMessageBodyBuilder extends MimeMessageBodyBuilder {
+  import scalaz.syntax.monad._
   type MimeMessageBodyIn = MailBody
 
-  def buildMimeMessageBody: MimeMessageBodyIn => MimeMultipart = { body =>
-    new MimeMultipart("foo")
+  def buildMimeMessageBody: MimeMessageBodyIn => EitherFailures[MimeMultipart] = { body =>
+    new MimeMultipart("foo").point[EitherFailures]
   }
 }
 
@@ -28,19 +31,31 @@ trait UserInternetAddressBuilder extends InternetAddressBuilder {
   def buildInternetAddress = { user => scalaz.EitherT.fromTryCatch[Id, InternetAddress](InternetAddress.parse(user.email)(0)) }
 }
 
-class JavamailEmailMessageDeliverySpec extends Specification
-  with JavamailEmailMessageDelivery with EmailConfiguration
-  with UserInternetAddressBuilder with AttachmentMimeMessageBodyBuilder with SimpleMimeMessageBuilder {
-  def getMailSession = ???
+trait TestingEmailConfiguration extends EmailConfiguration {
+  import scalaz.syntax.monad._
+  def getMailSession = Session.getInstance(new Properties()).point[EitherFailures]
+}
 
-  "foo" in {
-    val from = User("Jan", "janm@cakesolutions.net")
+class JavamailEmailMessageDeliverySpec extends Specification {
+
+  class Simple extends JavamailEmailMessageDelivery with TestingEmailConfiguration with SimpleInternetAddressBuilder with SimpleMimeMessageBodyBuilder with SimpleMimeMessageBuilder
+
+  class Custom extends JavamailEmailMessageDelivery with TestingEmailConfiguration with UserInternetAddressBuilder with SimpleMimeMessageBodyBuilder with SimpleMimeMessageBuilder
+
+  "Constructs and sends Simple* email" in {
+    val from = "Jan Machacek <janm@cakesolutions.net>"
+    val simple = new Simple
     val x =
     for {
-      message <- buildMimeMessage(from, "Test", MailBody("Test", "<html>Test</html"), List(from), Nil, Nil)
-      result <- transportEmailMessage(message)
-    } yield (result)
+      message <- simple.buildMimeMessage(from, "Test", "Test Body", List(from), Nil, Nil)
+      result  <- simple.transportEmailMessage(message)
+    } yield result
 
-    x.run
+    x.run.toEither match {
+      case Left(t) => println(t)
+      case Right(()) =>
+    }
+
+    success
   }
 }

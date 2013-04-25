@@ -14,7 +14,7 @@ import java.util.Properties
  */
 trait EmailMessageTransport {
 
-  def transportEmailMessage(message: MimeMessage): EitherT[Id, Throwable, Unit]
+  def transportEmailMessage(message: MimeMessage): EitherFailures[Unit]
 
 }
 
@@ -29,7 +29,7 @@ trait EmailConfiguration {
    *
    * @return the properly configured session
    */
-  def getMailSession: EitherT[Id, Throwable, Session]
+  def getMailSession: EitherFailures[Session]
 
 }
 
@@ -76,7 +76,7 @@ trait MimeMessageBuilder {
    * Returns function that takes the input and produces errors on the left or ``MimeMessage`` on the right
    * @return the function that, ultimately, produces the ``MimeMessage``
    */
-  def buildMimeMessage: MessageIn => EitherT[Id, Throwable, MimeMessage]
+  def buildMimeMessage: MessageIn => EitherFailures[MimeMessage]
 
 }
 
@@ -93,11 +93,18 @@ trait InternetAddressBuilder {
    * Returns function that takes the input and produces errors on the left or ``InternetAddress`` on the right
    * @return the function that, ultimately, produces the ``InternetAddress``es
    */
-  def buildInternetAddress: AddressIn => EitherT[Id, Throwable, InternetAddress]
+  def buildInternetAddress: AddressIn => EitherFailures[InternetAddress]
 
-  def buildInternetAddresses: List[AddressIn] => EitherT[Id, Throwable, Array[InternetAddress]] = { addresses =>
-    val z = Array.empty[InternetAddress]
-    right[Id, Throwable, Array[InternetAddress]](z)
+  def buildInternetAddresses: List[AddressIn] => EitherFailures[Array[InternetAddress]] = { addresses =>
+    import scalaz.syntax.monad._
+
+    val z = List.empty[InternetAddress].point[EitherFailures]
+    addresses.map(buildInternetAddress).foldLeft(z) { (b, a) =>
+      for {
+        address   <- a
+        addresses <- b
+      } yield address :: addresses
+    }.map(_.toArray)
   }
 
 }
@@ -105,13 +112,13 @@ trait InternetAddressBuilder {
 trait MimeMessageBodyBuilder {
   type MimeMessageBodyIn
 
-  def buildMimeMessageBody: MimeMessageBodyIn => EitherT[Id, Throwable, MimeMultipart]
+  def buildMimeMessageBody: MimeMessageBodyIn => EitherFailures[MimeMultipart]
 }
 
 trait SimpleMimeMessageBodyBuilder extends MimeMessageBodyBuilder {
   type MimeMessageBodyIn = String
 
-  def buildMimeMessageBody: MimeMessageBodyIn => EitherT[Id, Throwable, MimeMultipart] = { body =>
+  def buildMimeMessageBody: MimeMessageBodyIn => EitherFailures[MimeMultipart] = { body =>
     val multipart = new MimeMultipart("alternative")
     val plainTextPart = new MimeBodyPart()
     plainTextPart.setContent(body, "text/plain")
@@ -129,7 +136,7 @@ trait SimpleMimeMessageBodyBuilder extends MimeMessageBodyBuilder {
 trait SimpleInternetAddressBuilder extends InternetAddressBuilder {
   type AddressIn = String
 
-  def buildInternetAddress: AddressIn => EitherT[Id, Throwable, InternetAddress] = { address: AddressIn =>
+  def buildInternetAddress: AddressIn => EitherFailures[InternetAddress] = { address: AddressIn =>
     fromTryCatch[Id, InternetAddress](InternetAddress.parse(address, false)(0))
   }
 }
@@ -154,7 +161,7 @@ trait SimpleMimeMessageBuilder extends MimeMessageBuilder {
     message
   }
 
-  def buildMimeMessage: MessageIn => EitherT[Id, Throwable, MimeMessage] = { in: MessageIn =>
+  def buildMimeMessage: MessageIn => EitherFailures[MimeMessage] = { in: MessageIn =>
 
     val (from, subject, body, to, cc, bcc) = in
 
@@ -183,7 +190,7 @@ trait JavamailEmailMessageDelivery extends EmailMessageTransport {
    * @param message the message to send
    * @return ()
    */
-  def transportEmailMessage(message: MimeMessage): EitherT[Id, Throwable, Unit] = {
-    scalaz.EitherT.fromTryCatch[Id, Unit](Transport.send(message))
+  def transportEmailMessage(message: MimeMessage): EitherFailures[Unit] = {
+    fromTryCatch[Id, Unit](Transport.send(message))
   }
 }
