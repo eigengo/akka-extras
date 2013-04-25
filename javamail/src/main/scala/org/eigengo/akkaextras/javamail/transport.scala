@@ -93,11 +93,11 @@ trait InternetAddressBuilder {
    * Returns function that takes the input and produces errors on the left or ``InternetAddress`` on the right
    * @return the function that, ultimately, produces the ``InternetAddress``es
    */
-  def buildInternetAddress: AddressIn => EitherT[Id, Throwable, List[InternetAddress]]
+  def buildInternetAddress: AddressIn => EitherT[Id, Throwable, InternetAddress]
 
-  def buildInternetAddresses: List[AddressIn] => EitherT[Id, Throwable, List[InternetAddress]] = { addresses =>
-    val z = List.empty[InternetAddress]
-    right[Id, Throwable, List[InternetAddress]](z)
+  def buildInternetAddresses: List[AddressIn] => EitherT[Id, Throwable, Array[InternetAddress]] = { addresses =>
+    val z = Array.empty[InternetAddress]
+    right[Id, Throwable, Array[InternetAddress]](z)
   }
 
 }
@@ -129,8 +129,8 @@ trait SimpleMimeMessageBodyBuilder extends MimeMessageBodyBuilder {
 trait SimpleInternetAddressBuilder extends InternetAddressBuilder {
   type AddressIn = String
 
-  def buildInternetAddress: AddressIn => EitherT[Id, Throwable, List[InternetAddress]] = { address: AddressIn =>
-    fromTryCatch[Id, List[InternetAddress]](InternetAddress.parse(address, false).toList)
+  def buildInternetAddress: AddressIn => EitherT[Id, Throwable, InternetAddress] = { address: AddressIn =>
+    fromTryCatch[Id, InternetAddress](InternetAddress.parse(address, false)(0))
   }
 }
 
@@ -141,6 +141,18 @@ trait SimpleMimeMessageBuilder extends MimeMessageBuilder {
    * The input is _from_, _subject_, _body_, _to_, _cc_, _bcc_
    */
   type MessageIn = (AddressIn, String, MimeMessageBodyIn, List[AddressIn], List[AddressIn], List[AddressIn])
+
+  def mimeMessage(session: Session, from: InternetAddress, subject: String, body: MimeMultipart,
+                  to: Array[InternetAddress], cc: Array[InternetAddress], bcc: Array[InternetAddress]): MimeMessage = {
+    val message =  new MimeMessage(session)
+    message.setSubject(subject)
+    message.setContent(body)
+    message.setFrom(from)
+    message.addRecipients(Message.RecipientType.TO, to.map(_.asInstanceOf[Address]))
+    message.addRecipients(Message.RecipientType.CC, cc.map(_.asInstanceOf[Address]))
+    message.addRecipients(Message.RecipientType.BCC, bcc.map(_.asInstanceOf[Address]))
+    message
+  }
 
   def buildMimeMessage: MessageIn => EitherT[Id, Throwable, MimeMessage] = { in: MessageIn =>
 
@@ -153,11 +165,7 @@ trait SimpleMimeMessageBuilder extends MimeMessageBuilder {
       to          <- buildInternetAddresses(to)
       cc          <- buildInternetAddresses(cc)
       bcc         <- buildInternetAddresses(bcc)
-
-      message     =  new MimeMessage(session)
-
-
-    } yield message
+    } yield mimeMessage(session, from, subject, body, to, cc, bcc)
 
   }
 }
