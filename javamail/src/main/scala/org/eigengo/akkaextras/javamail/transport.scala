@@ -2,7 +2,6 @@ package org.eigengo.akkaextras.javamail
 
 import javax.mail.internet.{MimeBodyPart, MimeMultipart, InternetAddress, MimeMessage}
 import scalaz.EitherT._
-import scalaz.EitherT
 import scalaz.Id._
 import javax.mail._
 import com.typesafe.config.Config
@@ -80,7 +79,7 @@ trait MimeMessageBuilder {
   /**
    * The input type
    */
-  type MessageIn
+  type MessageIn <: AnyRef
 
   /**
    * Returns function that takes the input and produces errors on the left or ``MimeMessage`` on the right
