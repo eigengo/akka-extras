@@ -72,7 +72,8 @@ object PatternsBuild extends Build {
     libraryDependencies += mail,
     libraryDependencies += scalaz_core,
     libraryDependencies += typesafe_config,
-    libraryDependencies += specs2 % "test"
+    libraryDependencies += specs2 % "test",
+    libraryDependencies += dumbster % "test"
   )
 
   lazy val main = module("main") dependsOn(apple_push, freemarker_templating, javamail)
@@ -104,4 +105,6 @@ object Dependencies {
   val specs2          = "org.specs2"        %% "specs2"            % "1.14"
   val mail            = "javax.mail"         % "mail"              % "1.4.2"
   val freemarker      = "org.freemarker"     % "freemarker"        % "2.3.19"
+  val dumbster        = "dumbster"           % "dumbster"          % "1.6"
+
 }
