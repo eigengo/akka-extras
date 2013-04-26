@@ -220,3 +220,11 @@ trait Emailer {
   def email: MessageIn => EitherFailures[Unit] = { message => buildMimeMessage(message).flatMap(transportEmailMessage) }
 
 }
+
+/**
+ * Constructs the "simple" email structure. Simple in this case means that the addresses and body are ``String``s. You
+ * still need to provide the appropriate ``EmailConfiguration``.
+ */
+trait SimpleUnconfiguredEmail extends JavamailEmailTransport with SimpleInternetAddressBuilder with SimpleMimeMessageBodyBuilder with SimpleMimeMessageBuilder {
+  this: EmailConfiguration =>
+}

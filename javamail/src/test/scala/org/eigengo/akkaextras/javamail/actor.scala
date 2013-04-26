@@ -8,7 +8,7 @@ import org.specs2.mutable.SpecificationLike
  * @author janmachacek
  */
 class EmailActorSpec extends TestKit(ActorSystem()) with SpecificationLike with EmailFragments {
-  val actor = TestActorRef(new EmailActor with SimpleUnconfiguredActorEmail with TestingEmailConfiguration)
+  val actor = TestActorRef(new SimpleEmailActor with SimpleUnconfiguredEmail with TestingEmailConfiguration)
 
   "Send simple email" in {
     val subject = "Subject"
