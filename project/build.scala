@@ -25,11 +25,11 @@ object EigengoBuild extends Build {
 
   override val settings = super.settings ++ Seq(
     organization := "org.eigengo.akka-extras",
-    version := "0.1-SNAPSHOT",
+    version := "0.1.0",
     scalaVersion := "2.10.1"
   )
 
-  lazy val defaultSettings = Defaults.defaultSettings ++ graphSettings ++ Seq(
+  lazy val defaultSettings = Defaults.defaultSettings ++ Publish.settings ++ graphSettings ++ Seq(
     scalacOptions in Compile ++= Seq("-encoding", "UTF-8", "-target:jvm-1.6", "-deprecation", "-unchecked"),
     javacOptions in Compile ++= Seq("-source", "1.6", "-target", "1.6", "-Xlint:unchecked", "-Xlint:deprecation", "-Xlint:-options"),
     // https://github.com/sbt/sbt/issues/702
@@ -72,7 +72,9 @@ object EigengoBuild extends Build {
     //libraryDependencies <+= scala_reflect,
     libraryDependencies += specs2 % "test",
     libraryDependencies += dumbster % "test",
-    libraryDependencies += akka_testkit % "test"
+    libraryDependencies += akka_testkit % "test",
+
+    publishArtifact in Compile := true
   )
 
   lazy val main = module("main") dependsOn(apple_push, freemarker_templating, javamail)
@@ -80,7 +82,7 @@ object EigengoBuild extends Build {
   lazy val root = Project(
     id = "parent", 
     base = file("."), 
-    settings = defaultSettings ++ Publish.settings ++ ScctPlugin.mergeReportSettings,
+    settings = defaultSettings ++ ScctPlugin.mergeReportSettings ++ Seq(publishArtifact in Compile := false),
     aggregate = Seq(apple_push, freemarker_templating, javamail) 
   )
   
