@@ -9,11 +9,15 @@ import com.typesafe.config.Config
 import java.util.Properties
 
 /**
- * Implementations transport the
- *
+ * Implementations transport the ``message`` to its recipients
  */
-trait EmailMessageTransport {
+trait EmailTransport {
 
+  /**
+   * Sends the ``message`` to its recipients
+   * @param message the message to be sent
+   * @return ()
+   */
   def transportEmailMessage(message: MimeMessage): EitherFailures[Unit]
 
 }
@@ -26,7 +30,6 @@ trait EmailConfiguration {
 
   /**
    * Constructs fully initialised [[javax.mail.Session]].
-   *
    * @return the properly configured session
    */
   def getMailSession: EitherFailures[Session]
@@ -40,24 +43,31 @@ trait ConfigEmailConfiguration extends EmailConfiguration {
   def config: Config
 
   def getMailSession = {
-    val props = getMailProperties
-    val username = config.getString("akka-extras.javamail.username")
-    val password = config.getString("akka-extras.javamail.password")
-    val authenticator = new Authenticator {
-          override def getPasswordAuthentication =
-            new PasswordAuthentication(username, password)
-        }
+    val props = buildMailProperties()
+    if (config.hasPath("akka-extras.javamail.authenticate")) {
+      val username = config.getString("akka-extras.javamail.authenticate.username")
+      val password = config.getString("akka-extras.javamail.authenticate.password")
+      val authenticator = new Authenticator {
+            override def getPasswordAuthentication =
+              new PasswordAuthentication(username, password)
+          }
+      fromTryCatch[Id, Session](Session.getInstance(props, authenticator))
+    } else {
+      fromTryCatch[Id, Session](Session.getInstance(props))
+    }
 
-    fromTryCatch[Id, Session](Session.getInstance(props, authenticator))
+
   }
 
-  private def getMailProperties = {
+  private def buildMailProperties(): java.util.Properties = {
     val props = new Properties()
-    props.put("mail.smtp.auth", "true")
-    props.put("mail.smtp.starttls.enable", "true")
-    props.put("mail.smtp.host", "smtp.gmail.com")
-    props.put("mail.smtp.port", "587")
-
+    if (config.hasPath("akka-extras.javamail.properties")) {
+      val properties = config.getConfig("akka-extras.javamail.properties")
+      import scala.collection.JavaConversions._
+      properties.entrySet().foreach { entry =>
+        props.put(entry.getKey, entry.getValue.render())
+      }
+    }
     props
   }
 
@@ -109,9 +119,19 @@ trait InternetAddressBuilder {
 
 }
 
+/**
+ * Constructs the ``MimeMultipart`` message from some input
+ */
 trait MimeMessageBodyBuilder {
+  /**
+   * The input type
+   */
   type MimeMessageBodyIn
 
+  /**
+   * Returns function that takes hte input and produces errors on the left or ``MimeMultipart`` on the right
+   * @return the function that, ultimately, produces the ``MimeMultipart`` from the input
+   */
   def buildMimeMessageBody: MimeMessageBodyIn => EitherFailures[MimeMultipart]
 }
 
@@ -180,7 +200,7 @@ trait SimpleMimeMessageBuilder extends MimeMessageBuilder {
 /**
  * Simple email message delivery system for temporary usage.
  */
-trait JavamailEmailMessageDelivery extends EmailMessageTransport {
+trait JavamailEmailTransport extends EmailTransport {
   this: EmailConfiguration =>
 
 
@@ -193,4 +213,11 @@ trait JavamailEmailMessageDelivery extends EmailMessageTransport {
   def transportEmailMessage(message: MimeMessage): EitherFailures[Unit] = {
     fromTryCatch[Id, Unit](Transport.send(message))
   }
+}
+
+trait Emailer {
+  this: EmailTransport with EmailConfiguration with MimeMessageBuilder with MimeMessageBodyBuilder with InternetAddressBuilder =>
+
+  def email: MessageIn => EitherFailures[Unit] = { message => buildMimeMessage(message).flatMap(transportEmailMessage) }
+
 }
