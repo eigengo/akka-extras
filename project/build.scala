@@ -72,8 +72,11 @@ object PatternsBuild extends Build {
     libraryDependencies += mail,
     libraryDependencies += scalaz_core,
     libraryDependencies += typesafe_config,
+    libraryDependencies += akka,
+    //libraryDependencies <+= scala_reflect,
     libraryDependencies += specs2 % "test",
-    libraryDependencies += dumbster % "test"
+    libraryDependencies += dumbster % "test",
+    libraryDependencies += akka_testkit % "test"
   )
 
   lazy val main = module("main") dependsOn(apple_push, freemarker_templating, javamail)
@@ -98,6 +101,7 @@ object Dependencies {
   )
 
   val akka_version    = "2.1.2"
+  //val scala_reflect   = scalaVersion("org.scala-lang"    % "scala-reflect"     % _)
   val akka            = "com.typesafe.akka" %% "akka-actor"        % akka_version
   val scalaz_core     = "org.scalaz"        %% "scalaz-core"       % "7.0.0"
   val typesafe_config = "com.typesafe"       % "config"            % "1.0.0"
