@@ -1,10 +1,7 @@
 import sbt._
 import Keys._
-import sbtscalaxb.Plugin._
-import ScalaxbKeys._
+import sbtrelease._
 import net.virtualvoid.sbt.graph.Plugin._
-import org.scalastyle.sbt._
-import com.typesafe.sbt.SbtStartScript
 
 // to sync this project with IntelliJ, run the sbt-idea plugin with: sbt gen-idea
 //
@@ -24,11 +21,11 @@ import com.typesafe.sbt.SbtStartScript
 // http://www.scala-sbt.org/release/docs/Getting-Started/Multi-Project.html
 // https://github.com/sbt/sbt/blob/0.12.2/main/Build.scala
 // https://github.com/akka/akka/blob/master/project/AkkaBuild.scala
-object PatternsBuild extends Build {
+object EigengoBuild extends Build {
 
   override val settings = super.settings ++ Seq(
-    organization := "org.eigengo",
-    version := "1.0-SNAPSHOT",
+    organization := "org.eigengo.akka-extras",
+    version := "0.1-SNAPSHOT",
     scalaVersion := "2.10.1"
   )
 
@@ -52,12 +49,11 @@ object PatternsBuild extends Build {
       // resolvers += "neo4j repo" at "http://m2.neo4j.org/content/repositories/releases/"  
     ),
     parallelExecution in Test := false
-  ) ++ ScctPlugin.instrumentSettings ++ scalaxbSettings ++ ScalastylePlugin.Settings
+  ) ++ ScctPlugin.instrumentSettings // ++ ScalastylePlugin.Settings
 
   def module(dir: String) = Project(id = dir, base = file(dir), settings = defaultSettings)
   import Dependencies._
 
-  // https://github.com/eed3si9n/scalaxb/issues/199
   lazy val apple_push = module("apple-push") settings(
     libraryDependencies += akka,
     libraryDependencies += specs2 % "test"
@@ -81,13 +77,63 @@ object PatternsBuild extends Build {
 
   lazy val main = module("main") dependsOn(apple_push, freemarker_templating, javamail)
 
-  lazy val root = Project(id = "parent", base = file("."), settings = defaultSettings) settings (
-      ScctPlugin.mergeReportSettings: _*
-  ) settings (
-    SbtStartScript.startScriptForClassesSettings: _*
-  ) aggregate (
-    apple_push, freemarker_templating, javamail
-  ) dependsOn (main) // yuck
+  lazy val root = Project(
+    id = "parent", 
+    base = file("."), 
+    settings = defaultSettings ++ Publish.settings ++ ScctPlugin.mergeReportSettings,
+    aggregate = Seq(apple_push, freemarker_templating, javamail) 
+  )
+  
+}
+
+object Publish {
+
+  lazy val settings = Seq(
+    crossPaths := false,
+    pomExtra := akkaExtrasPomExtra,
+    publishTo <<= version { v: String =>
+      val nexus = "https://oss.sonatype.org/"
+      if (v.trim.endsWith("SNAPSHOT")) Some("snapshots" at nexus + "content/repositories/snapshots")
+      else                             Some("releases" at nexus + "service/local/staging/deploy/maven2")
+    },
+    credentials ++= akkaExtrasCredentials,
+    organizationName := "Eigengo",
+    organizationHomepage := Some(url("http://www.eigengo.com")),
+    publishMavenStyle := true,
+    // Maven central cannot allow other repos.  
+    // TODO - Make sure all artifacts are on central.
+    pomIncludeRepository := { x => false }
+  )
+
+  val akkaExtrasPomExtra = (
+    <url>http://www.eigengo.org/akka-extras</url>
+    <licenses>
+      <license>
+        <name>BSD-style</name>
+        <url>http://www.opensource.org/licenses/bsd-license.php</url>
+        <distribution>repo</distribution>
+      </license>
+    </licenses>
+    <scm>
+      <url>git@github.com:eigengo/scalad.git</url>
+      <connection>scm:git:git@github.com:eigengo/scalad.git</connection>
+    </scm>
+    <developers>
+      <developer>
+        <id>janmachacek</id>
+        <name>Jan Machacek</name>
+        <url>http://www.eigengo.org</url>
+      </developer>
+      <developer>
+        <id>anirvanchakraborty</id>
+        <name>Anirvan Chakraborty</name>
+        <url>http://www.eigengo.org</url>
+      </developer>
+    </developers>
+  )
+  
+  val akkaExtrasCredentials = Seq(Credentials(Path.userHome / ".sonatype"))
+
 }
 
 object Dependencies {
