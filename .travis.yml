@@ -2,16 +2,16 @@
 language: scala
 
 scala:
-	- 2.10.1
+  - 2.10.1
 
 # Testing with OpenJDK7 as well just to be adventurous!
 jdk:
-	- oraclejdk7
-	- openjdk7
+  - oraclejdk7
+  - openjdk7
 
 # Custom notification settings
 notifications:
-	email:
-		recipients:
-			- anirvanchakraborty@gmail.com
-			- jan.machacek@gmail.com
+  email:
+    recipients:
+      - anirvanchakraborty@gmail.com
+      - jan.machacek@gmail.com
