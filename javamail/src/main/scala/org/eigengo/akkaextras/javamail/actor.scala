@@ -10,7 +10,7 @@ import javax.mail.internet.MimeMessage
  * system.actorOf(new EmailActor with SimpleConfiguredActorEmail)
  * }}}
  */
-trait SimpleConfgiruedActorEmail extends SimpleUnconfiguredEmail with ConfigEmailConfiguration {
+trait SimpleConfiguredActorEmail extends SimpleUnconfiguredEmail with ConfigEmailConfiguration {
   this: Actor =>
 
   def config = context.system.settings.config
