@@ -3,3 +3,4 @@ akka-extras [![Build Status](https://travis-ci.org/eigengo/akka-extras.png?branc
 ---
 
 Useful components we discovered in akka-patterns
+
