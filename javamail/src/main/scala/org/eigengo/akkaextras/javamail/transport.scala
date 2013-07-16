@@ -65,7 +65,7 @@ trait ConfigEmailConfiguration extends EmailConfiguration {
       val properties = config.getConfig("akka-extras.javamail.properties")
       import scala.collection.JavaConversions._
       properties.entrySet().foreach { entry =>
-        props.put(entry.getKey, entry.getValue.render().replaceAll("\"",""))
+        props.put(entry.getKey, entry.getValue.render().replaceAll("\"", ""))
       }
     }
     props
